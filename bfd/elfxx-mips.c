@@ -321,6 +321,11 @@ struct mips_elf_hash_sort_data
   /* The greatest dynamic symbol table index corresponding to an external
      symbol without a GOT entry.  */
   bfd_size_type max_non_got_dynindx;
+  /* If non-NULL, output BFD for .gnu.xhash finalization.  */
+  bfd *output_bfd;
+  /* If non-NULL, pointer to contents of .gnu.xhash for filling in
+     real final dynindx.  */
+  bfd_byte *gnuxhash;
 };
 
 /* We make up to two PLT entries if needed, one for standard MIPS code
@@ -377,6 +382,9 @@ struct mips_elf_link_hash_entry
   /* This is like the call_stub field, but it is used if the function
      being called returns a floating point value.  */
   asection *call_fp_stub;
+
+  /* If non-zero, location in .gnu.xhash to write real final dynindx.  */
+  bfd_vma gnuxhash_loc;
 
   /* The highest GGA_* value that satisfies all references to this symbol.  */
   unsigned int global_got_area : 2;
@@ -1274,6 +1282,7 @@ mips_elf_link_hash_newfunc (struct bfd_hash_entry *entry,
       ret->fn_stub = NULL;
       ret->call_stub = NULL;
       ret->call_fp_stub = NULL;
+      ret->gnuxhash_loc = 0;
       ret->global_got_area = GGA_NONE;
       ret->got_only_for_calls = TRUE;
       ret->readonly_reloc = FALSE;
@@ -3853,6 +3862,18 @@ mips_elf_sort_hash_table (bfd *abfd, struct bfd_link_info *info)
      at the head of the table; see `_bfd_elf_link_renumber_dynsyms'.  */
   hsd.max_local_dynindx = count_section_dynsyms (abfd, info) + 1;
   hsd.max_non_got_dynindx = htab->root.local_dynsymcount + 1;
+  hsd.output_bfd = abfd;
+  if (htab->root.dynobj != NULL
+      && htab->root.dynamic_sections_created
+      && info->emit_gnu_hash)
+    {
+      asection *s = bfd_get_linker_section (htab->root.dynobj, ".gnu.xhash");
+      BFD_ASSERT (s != NULL);
+      hsd.gnuxhash = s->contents;
+      BFD_ASSERT (hsd.gnuxhash != NULL);
+    }
+  else
+    hsd.gnuxhash = NULL;
   mips_elf_link_hash_traverse (htab, mips_elf_sort_hash_table_f, &hsd);
 
   /* There should have been enough room in the symbol table to
@@ -3902,6 +3923,12 @@ mips_elf_sort_hash_table_f (struct mips_elf_link_hash_entry *h, void *data)
 	hsd->low = (struct elf_link_hash_entry *) h;
       h->root.dynindx = hsd->max_unref_got_dynindx++;
       break;
+    }
+
+  if (h->gnuxhash_loc != 0 && hsd->gnuxhash != NULL)
+    {
+      bfd_put_32 (hsd->output_bfd, h->root.dynindx,
+		  hsd->gnuxhash + h->gnuxhash_loc);
     }
 
   return TRUE;
@@ -16389,4 +16416,11 @@ int
 _bfd_mips_elf_cant_unwind_opcode (struct bfd_link_info *link_info ATTRIBUTE_UNUSED)
 {
   return COMPACT_EH_CANT_UNWIND_OPCODE;
+}
+
+void
+_bfd_mips_elf_record_hash_symbol (struct elf_link_hash_entry *h, bfd_vma xlat_loc)
+{
+  struct mips_elf_link_hash_entry *hmips = (struct mips_elf_link_hash_entry *) h;
+  hmips->gnuxhash_loc = xlat_loc;
 }
