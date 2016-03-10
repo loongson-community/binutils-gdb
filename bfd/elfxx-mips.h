@@ -161,6 +161,8 @@ extern bfd_boolean _bfd_mips_elf_gc_mark_extra_sections
   (struct bfd_link_info *, elf_gc_mark_hook_fn);
 extern void _bfd_mips_post_process_headers
   (bfd *abfd, struct bfd_link_info *link_info);
+extern void _bfd_mips_elf_record_hash_symbol
+  (struct elf_link_hash_entry *h, bfd_vma xlat_loc);
 
 extern const struct bfd_elf_special_section _bfd_mips_elf_special_sections [];
 
@@ -192,6 +194,7 @@ literal_reloc_p (int r_type)
 #define elf_backend_merge_symbol_attribute  _bfd_mips_elf_merge_symbol_attribute
 #define elf_backend_ignore_undef_symbol _bfd_mips_elf_ignore_undef_symbol
 #define elf_backend_post_process_headers _bfd_mips_post_process_headers
+#define elf_backend_record_hash_symbol _bfd_mips_elf_record_hash_symbol
 #define elf_backend_compact_eh_encoding _bfd_mips_elf_compact_eh_encoding
 #define elf_backend_cant_unwind_opcode _bfd_mips_elf_cant_unwind_opcode
 #define elf_backend_always_renumber_dynsyms TRUE
