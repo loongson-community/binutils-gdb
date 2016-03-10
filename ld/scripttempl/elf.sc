@@ -369,6 +369,7 @@ cat > ldscripts/dyntmp.$$ <<EOF
   ${TEXT_DYNAMIC+${DYNAMIC}}
   .hash         ${RELOCATING-0} : { *(.hash) }
   .gnu.hash     ${RELOCATING-0} : { *(.gnu.hash) }
+  .gnu.xhash    ${RELOCATING-0} : { *(.gnu.xhash) }
   .dynsym       ${RELOCATING-0} : { *(.dynsym) }
   .dynstr       ${RELOCATING-0} : { *(.dynstr) }
   .gnu.version  ${RELOCATING-0} : { *(.gnu.version) }
