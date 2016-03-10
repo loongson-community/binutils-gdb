@@ -1713,6 +1713,7 @@ _bfd_elf_print_private_bfd_data (bfd *abfd, void *farg)
 	    case DT_USED: name = "USED"; break;
 	    case DT_FILTER: name = "FILTER"; stringp = TRUE; break;
 	    case DT_GNU_HASH: name = "GNU_HASH"; break;
+	    case DT_GNU_XHASH: name = "GNU_XHASH"; break;
 	    }
 
 	  fprintf (f, "  %-20s ", name);
@@ -2006,6 +2007,7 @@ bfd_section_from_shdr (bfd *abfd, unsigned int shindex)
     case SHT_PREINIT_ARRAY:	/* .preinit_array section.  */
     case SHT_GNU_LIBLIST:	/* .gnu.liblist section.  */
     case SHT_GNU_HASH:		/* .gnu.hash section.  */
+    case SHT_GNU_XHASH:		/* .gnu.xhash section.  */
       ret = _bfd_elf_make_section_from_shdr (abfd, hdr, name, shindex);
       goto success;
 
@@ -2617,6 +2619,7 @@ static const struct bfd_elf_special_section special_sections_g[] =
   { STRING_COMMA_LEN (".gnu.liblist"),     0, SHT_GNU_LIBLIST, SHF_ALLOC },
   { STRING_COMMA_LEN (".gnu.conflict"),    0, SHT_RELA,        SHF_ALLOC },
   { STRING_COMMA_LEN (".gnu.hash"),        0, SHT_GNU_HASH,    SHF_ALLOC },
+  { STRING_COMMA_LEN (".gnu.xhash"),       0, SHT_GNU_XHASH,   SHF_ALLOC },
   { NULL,                        0,        0, 0,               0 }
 };
 
@@ -3318,6 +3321,7 @@ elf_fake_sections (bfd *abfd, asection *asect, void *fsarg)
       break;
 
     case SHT_GNU_HASH:
+    case SHT_GNU_XHASH:
       this_hdr->sh_entsize = bed->s->arch_size == 64 ? 0 : 4;
       break;
     }
@@ -3896,6 +3900,7 @@ assign_section_numbers (bfd *abfd, struct bfd_link_info *link_info)
 
 	case SHT_HASH:
 	case SHT_GNU_HASH:
+	case SHT_GNU_XHASH:
 	case SHT_GNU_versym:
 	  /* sh_link is the section header index of the symbol table
 	     this hash table or version table is for.  */
