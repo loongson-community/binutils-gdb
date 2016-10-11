@@ -4034,6 +4034,7 @@ void
 md_assemble (char *str)
 {
   struct mips_cl_insn insn;
+  char *input_line_last;
   bfd_reloc_code_real_type unused_reloc[3]
     = {BFD_RELOC_UNUSED, BFD_RELOC_UNUSED, BFD_RELOC_UNUSED};
 
@@ -4073,21 +4074,42 @@ md_assemble (char *str)
 
     if ((strcmp (insn.insn_mo->name, "ll") == 0)
         ||(strcmp (insn.insn_mo->name, "lld") == 0)) {
-           bak_imm_expr = imm_expr;
-           bak_offset_expr = offset_expr;
 
-           bak_offset_reloc[0] = offset_reloc[0];
-           bak_offset_reloc[1] = offset_reloc[1];
-           bak_offset_reloc[2] = offset_reloc[2];
+	   input_line_last = input_line_pointer;
 
-           md_assemble("sync");
+	   /* Find ll/lld look back */
+	   do
+	     input_line_last--;
+	   while( !(input_line_last[0] == 'l' && input_line_last[1] == 'l'));
 
-           imm_expr = bak_imm_expr;
-           offset_expr = bak_offset_expr;
+	   /* Skip space tab semicolon */
+	   do
+	     input_line_last--;
+	   while ( input_line_last[0] == ' ' || input_line_last[0] == '\t' || input_line_last[0] == '\n'  || input_line_last[0] == ';');
 
-           offset_reloc[0] = bak_offset_reloc[0];
-           offset_reloc[1] = bak_offset_reloc[1];
-           offset_reloc[2] = bak_offset_reloc[2];
+	   /* Check back if next four character is "sync" */
+	   if (input_line_last[-3] == 's' && input_line_last[-2] == 'y' && input_line_last[-1] == 'n' && input_line_last[0] == 'c')
+	   {} /* The sync was here, don't added. */
+	   else
+	   {
+             bak_imm_expr = imm_expr;
+             bak_offset_expr = offset_expr;
+
+             bak_offset_reloc[0] = offset_reloc[0];
+             bak_offset_reloc[1] = offset_reloc[1];
+             bak_offset_reloc[2] = offset_reloc[2];
+
+             md_assemble("sync");
+
+             imm_expr = bak_imm_expr;
+             offset_expr = bak_offset_expr;
+
+             offset_reloc[0] = bak_offset_reloc[0];
+             offset_reloc[1] = bak_offset_reloc[1];
+             offset_reloc[2] = bak_offset_reloc[2];
+
+	   }
+
     }
   }
 
