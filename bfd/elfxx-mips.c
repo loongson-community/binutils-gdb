@@ -11885,6 +11885,10 @@ mips_set_isa_flags (bfd *abfd)
   switch (bfd_get_mach (abfd))
     {
     default:
+    case bfd_mach_mips_loongson_3a:
+      val = E_MIPS_ARCH_64R2 | E_MIPS_MACH_LS3A;
+      break;
+
     case bfd_mach_mips3000:
       val = E_MIPS_ARCH_1;
       break;
@@ -11964,10 +11968,6 @@ mips_set_isa_flags (bfd *abfd)
 
     case bfd_mach_mips_sb1:
       val = E_MIPS_ARCH_64 | E_MIPS_MACH_SB1;
-      break;
-
-    case bfd_mach_mips_loongson_3a:
-      val = E_MIPS_ARCH_64R2 | E_MIPS_MACH_LS3A;
       break;
 
     case bfd_mach_mips_octeon:
