@@ -103,7 +103,7 @@ if {[istarget mips64*-*-linux*] &&
     (![board_info [target_info name] exists multilib_flags] ||
      ![string match "*-mabi" [board_info [target_info name] multilib_flags]])
    } {
-    append gcc_B_opt " -mabi=n32"
+    append gcc_B_opt " -mabi=64"
 }
 
 if { [istarget rx-*-*] } {
