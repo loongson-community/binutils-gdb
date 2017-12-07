@@ -943,6 +943,14 @@ static bfd_boolean mips_fix_cn63xxp1;
  */
 static bfd_boolean mips_fix_loongson3_llsc = TRUE;
 
+/* ...likewise -mfix-loongson3-10209
+ */
+static bfd_boolean mips_fix_loongson3_10209 = TRUE;
+
+/* ...likewise -mfix-loongson3-10209l
+ */
+static bfd_boolean mips_fix_loongson3_10209l = FALSE;
+
 /* We don't relax branches by default, since this causes us to expand
    `la .l2 - .l1' if there's a branch between .l1 and .l2, because we
    fail to compute the offset before expanding the macro to the most
@@ -1441,6 +1449,10 @@ enum options
     OPTION_NO_FIX_RM7000,
     OPTION_FIX_LOONGSON3_LLSC,
     OPTION_NO_FIX_LOONGSON3_LLSC,
+    OPTION_FIX_LOONGSON3_10209,
+    OPTION_NO_FIX_LOONGSON3_10209,
+    OPTION_FIX_LOONGSON3_10209L,
+    OPTION_NO_FIX_LOONGSON3_10209L,
     OPTION_FIX_LOONGSON2F_JUMP,
     OPTION_NO_FIX_LOONGSON2F_JUMP,
     OPTION_FIX_LOONGSON2F_NOP,
@@ -1559,6 +1571,10 @@ struct option md_longopts[] =
   {"mno-fix7000", no_argument, NULL, OPTION_MNO_7000_HILO_FIX},
   {"mfix-loongson3-llsc",   no_argument, NULL, OPTION_FIX_LOONGSON3_LLSC},
   {"mno-fix-loongson3-llsc", no_argument, NULL, OPTION_NO_FIX_LOONGSON3_LLSC},
+  {"mfix-loongson3-10209",    no_argument, NULL, OPTION_FIX_LOONGSON3_10209},
+  {"mno-fix-loongson3-10209", no_argument, NULL, OPTION_NO_FIX_LOONGSON3_10209},
+  {"mfix-loongson3-10209l",    no_argument, NULL, OPTION_FIX_LOONGSON3_10209L},
+  {"mno-fix-loongson3-10209l", no_argument, NULL, OPTION_NO_FIX_LOONGSON3_10209L},
   {"mfix-loongson2f-jump", no_argument, NULL, OPTION_FIX_LOONGSON2F_JUMP},
   {"mno-fix-loongson2f-jump", no_argument, NULL, OPTION_NO_FIX_LOONGSON2F_JUMP},
   {"mfix-loongson2f-nop", no_argument, NULL, OPTION_FIX_LOONGSON2F_NOP},
@@ -6493,6 +6509,64 @@ nops_for_24k (int ignore, const struct mips_cl_insn *hist,
   return 1;
 }
 
+static int
+nops_for_loongson3_10209 (int ignore, const struct mips_cl_insn *hist,
+	      const struct mips_cl_insn *insn)
+{
+
+#define INSN_ALL_LOADS (INSN_LOAD_COPROC | INSN_COPROC_MEMORY_DELAY	\
+			| INSN_LOAD_MEMORY | INSN_COPROC_MOVE)
+
+  if (ignore >= 2)
+    return 0;
+
+  /* If the instructions after the previous one are unknown, we have
+     to assume the ok.  */
+  if (!insn)
+    return 0;
+
+  if (strcmp (insn->insn_mo->name, "gslq") == 0
+     || strcmp (hist[0].insn_mo->name, "gslq") == 0
+     || strcmp (hist[1].insn_mo->name, "gslq") == 0
+     || strcmp (hist[2].insn_mo->name, "gslq") == 0)
+    return 0;
+
+  if (strcmp (insn->insn_mo->name, "gslqc1") == 0
+     || strcmp (hist[0].insn_mo->name, "gslqc1") == 0
+     || strcmp (hist[1].insn_mo->name, "gslqc1") == 0
+     || strcmp (hist[2].insn_mo->name, "gslqc1") == 0)
+    return 0;
+
+  /* If insn is label, assume the worst.  */
+  struct insn_label_list *is_label;
+  is_label = seg_info (now_seg)->label_list;
+  if (is_label
+      && mips_fix_loongson3_10209l
+      && hist[0].frag != NULL
+      && strcmp (hist[0].insn_mo->name, "nop") == 0
+      && strcmp (hist[1].insn_mo->name, "nop") == 0
+      && (insn->insn_mo->pinfo & INSN_ALL_LOADS) != 0)
+    return 1;
+
+  /* If the previous instruction wasn't a load, there's nothing to
+     worry about.  */
+  if ((hist[0].insn_mo->pinfo & INSN_ALL_LOADS) == 0)
+    return 0;
+
+  /* Check whether we are dealing with four consecutive mem loads.  */
+  if ((insn->insn_mo->pinfo & INSN_ALL_LOADS) != 0
+      && (hist[0].insn_mo->pinfo & INSN_ALL_LOADS) != 0
+      && (hist[1].insn_mo->pinfo & INSN_ALL_LOADS) != 0
+      && (hist[2].insn_mo->pinfo & INSN_ALL_LOADS) != 0
+      && (delayed_branch_p (&hist[3])) == 0)
+    return 1;
+
+  return 0;
+#undef INSN_ALL_LOADS
+
+}
+
+
 /* Return the number of nops that would be needed if instruction INSN
    immediately followed the MAX_NOPS instructions given by HIST,
    where HIST[0] is the most recent instruction.  Ignore hazards
@@ -6525,6 +6599,13 @@ nops_for_insn (int ignore, const struct mips_cl_insn *hist,
   if (mips_fix_24k && !mips_opts.micromips)
     {
       tmp_nops = nops_for_24k (ignore, hist, insn);
+      if (tmp_nops > nops)
+	nops = tmp_nops;
+    }
+
+  if (mips_fix_loongson3_10209 && !mips_opts.micromips)
+    {
+      tmp_nops = nops_for_loongson3_10209 (ignore, hist, insn);
       if (tmp_nops > nops)
 	nops = tmp_nops;
     }
@@ -7166,7 +7247,7 @@ append_insn (struct mips_cl_insn *ip, expressionS *address_expr,
 	}
     }
 
-  if (mips_relax.sequence != 2 && !mips_opts.noreorder)
+  if (mips_relax.sequence != 2)
     {
       /* There are a lot of optimizations we could do that we don't.
 	 In particular, we do not, in general, reorder instructions.
@@ -14292,6 +14373,22 @@ md_parse_option (int c, char *arg)
 
     case OPTION_NO_FIX_LOONGSON3_LLSC:
       mips_fix_loongson3_llsc = FALSE;
+      break;
+
+    case OPTION_FIX_LOONGSON3_10209:
+      mips_fix_loongson3_10209 = 1;
+      break;
+
+    case OPTION_NO_FIX_LOONGSON3_10209:
+      mips_fix_loongson3_10209 = 0;
+      break;
+
+     case OPTION_FIX_LOONGSON3_10209L:
+      mips_fix_loongson3_10209l = 1;
+      break;
+
+    case OPTION_NO_FIX_LOONGSON3_10209L:
+      mips_fix_loongson3_10209l = 0;
       break;
 
     case OPTION_FIX_LOONGSON2F_JUMP:
