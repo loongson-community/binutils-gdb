@@ -937,6 +937,12 @@ static int mips_fix_rm7000;
 /* ...likewise -mfix-cn63xxp1 */
 static bfd_boolean mips_fix_cn63xxp1;
 
+/* ...likewise -mfix-loongson3-llsc
+ * Default is add sync before ll/lld
+ * So make the default value as one.
+ */
+static bfd_boolean mips_fix_loongson3_llsc = TRUE;
+
 /* We don't relax branches by default, since this causes us to expand
    `la .l2 - .l1' if there's a branch between .l1 and .l2, because we
    fail to compute the offset before expanding the macro to the most
@@ -1433,6 +1439,8 @@ enum options
     OPTION_NO_FIX_24K,
     OPTION_FIX_RM7000,
     OPTION_NO_FIX_RM7000,
+    OPTION_FIX_LOONGSON3_LLSC,
+    OPTION_NO_FIX_LOONGSON3_LLSC,
     OPTION_FIX_LOONGSON2F_JUMP,
     OPTION_NO_FIX_LOONGSON2F_JUMP,
     OPTION_FIX_LOONGSON2F_NOP,
@@ -1549,6 +1557,8 @@ struct option md_longopts[] =
   {"mfix7000", no_argument, NULL, OPTION_M7000_HILO_FIX},
   {"no-fix-7000", no_argument, NULL, OPTION_MNO_7000_HILO_FIX},
   {"mno-fix7000", no_argument, NULL, OPTION_MNO_7000_HILO_FIX},
+  {"mfix-loongson3-llsc",   no_argument, NULL, OPTION_FIX_LOONGSON3_LLSC},
+  {"mno-fix-loongson3-llsc", no_argument, NULL, OPTION_NO_FIX_LOONGSON3_LLSC},
   {"mfix-loongson2f-jump", no_argument, NULL, OPTION_FIX_LOONGSON2F_JUMP},
   {"mno-fix-loongson2f-jump", no_argument, NULL, OPTION_NO_FIX_LOONGSON2F_JUMP},
   {"mfix-loongson2f-nop", no_argument, NULL, OPTION_FIX_LOONGSON2F_NOP},
@@ -4010,8 +4020,43 @@ md_assemble (char *str)
     }
 
   if (insn_error.msg)
-    report_insn_error (str);
-  else if (insn.insn_mo->pinfo == INSN_MACRO)
+    {
+      report_insn_error (str);
+      goto out;
+    }
+
+  if (mips_fix_loongson3_llsc)
+    {
+      static expressionS bak_imm_expr;
+      static expressionS bak_offset_expr;
+      static bfd_reloc_code_real_type bak_offset_reloc[3] ;
+
+      struct insn_label_list *is_label;
+      is_label = seg_info (now_seg)->label_list;
+
+      if (((strcmp (insn.insn_mo->name, "ll") == 0)
+          ||(strcmp (insn.insn_mo->name, "lld") == 0))
+          && (strcmp (history[0].insn_mo->name, "sync") || is_label))
+        {
+           bak_imm_expr = imm_expr;
+           bak_offset_expr = offset_expr;
+
+           bak_offset_reloc[0] = offset_reloc[0];
+           bak_offset_reloc[1] = offset_reloc[1];
+           bak_offset_reloc[2] = offset_reloc[2];
+
+           md_assemble ((char *) "sync");
+
+           imm_expr = bak_imm_expr;
+           offset_expr = bak_offset_expr;
+
+           offset_reloc[0] = bak_offset_reloc[0];
+           offset_reloc[1] = bak_offset_reloc[1];
+           offset_reloc[2] = bak_offset_reloc[2];
+        }
+    }
+
+  if (insn.insn_mo->pinfo == INSN_MACRO)
     {
       macro_start ();
       if (mips_opts.mips16)
@@ -4028,6 +4073,7 @@ md_assemble (char *str)
 	append_insn (&insn, NULL, unused_reloc, FALSE);
     }
 
+out:
   mips_assembling_insn = FALSE;
 }
 
@@ -14238,6 +14284,14 @@ md_parse_option (int c, char *arg)
 
     case OPTION_NO_FIX_RM7000:
       mips_fix_rm7000 = 0;
+      break;
+
+    case OPTION_FIX_LOONGSON3_LLSC:
+      mips_fix_loongson3_llsc = TRUE;
+      break;
+
+    case OPTION_NO_FIX_LOONGSON3_LLSC:
+      mips_fix_loongson3_llsc = FALSE;
       break;
 
     case OPTION_FIX_LOONGSON2F_JUMP:
