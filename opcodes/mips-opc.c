@@ -346,6 +346,8 @@ decode_mips_operand (const char *p)
 #define VU0	EE
 #define VU0CH	INSN2_VU0_CHANNEL_SUFFIX
 
+#define LMS	INSN2_LOAD_MEMORY_SAFE
+
 /* MIPS DSP ASE support.
    NOTE:
    1. MIPS DSP ASE includes 4 accumulators ($ac0 - $ac3).  $ac0 is the pair
@@ -490,9 +492,9 @@ const struct mips_opcode mips_builtin_opcodes[] =
 {"gsldxc1",		"T,+b(b,d)",	0xd8000007, 0xfc000007,	WR_1|RD_3|RD_4|LM,	0,		IL3A,		0,	0 },
 {"gsswxc1",		"T,+b(b,d)",	0xf8000006, 0xfc000007,	RD_1|RD_3|RD_4|SM,	0,		IL3A,		0,	0 },
 {"gssdxc1",		"T,+b(b,d)",	0xf8000007, 0xfc000007,	RD_1|RD_3|RD_4|SM,	0,		IL3A,		0,	0 },
-{"gslq",		"+z,t,+c(b)",	0xc8000020, 0xfc008020,	WR_1|WR_2|RD_4|LM,	0,		IL3A,		0,	0 },
+{"gslq",		"+z,t,+c(b)",	0xc8000020, 0xfc008020,	WR_1|WR_2|RD_4|LM,	LMS,		IL3A,		0,	0 },
 {"gssq",		"+z,t,+c(b)",	0xe8000020, 0xfc008020,	RD_1|RD_2|RD_4|SM,	0,		IL3A,		0,	0 },
-{"gslqc1",		"+Z,T,+c(b)",	0xc8008020, 0xfc008020,	WR_1|WR_2|RD_4|LM,	0,		IL3A,		0,	0 },
+{"gslqc1",		"+Z,T,+c(b)",	0xc8008020, 0xfc008020,	WR_1|WR_2|RD_4|LM,	LMS,		IL3A,		0,	0 },
 {"gssqc1",		"+Z,T,+c(b)",	0xe8008020, 0xfc008020,	RD_1|RD_2|RD_4|SM,	0,		IL3A,		0,	0 },
 
 /* R5900 VU0 Macromode instructions. */
