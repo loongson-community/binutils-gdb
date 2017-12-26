@@ -943,6 +943,10 @@ static bfd_boolean mips_fix_cn63xxp1;
  */
 static bfd_boolean mips_fix_loongson3_llsc = TRUE;
 
+/* ...likewise -mfix-loongson3-loads
+ */
+static bfd_boolean mips_fix_loongson3_loads = TRUE;
+
 /* We don't relax branches by default, since this causes us to expand
    `la .l2 - .l1' if there's a branch between .l1 and .l2, because we
    fail to compute the offset before expanding the macro to the most
@@ -1483,6 +1487,8 @@ enum options
     OPTION_NO_FIX_RM7000,
     OPTION_FIX_LOONGSON3_LLSC,
     OPTION_NO_FIX_LOONGSON3_LLSC,
+    OPTION_FIX_LOONGSON3_LOADS,
+    OPTION_NO_FIX_LOONGSON3_LOADS,
     OPTION_FIX_LOONGSON2F_JUMP,
     OPTION_NO_FIX_LOONGSON2F_JUMP,
     OPTION_FIX_LOONGSON2F_NOP,
@@ -1607,6 +1613,8 @@ struct option md_longopts[] =
   {"mno-fix7000", no_argument, NULL, OPTION_MNO_7000_HILO_FIX},
   {"mfix-loongson3-llsc",   no_argument, NULL, OPTION_FIX_LOONGSON3_LLSC},
   {"mno-fix-loongson3-llsc", no_argument, NULL, OPTION_NO_FIX_LOONGSON3_LLSC},
+  {"mfix-loongson3-loads",    no_argument, NULL, OPTION_FIX_LOONGSON3_LOADS},
+  {"mno-fix-loongson3-loads", no_argument, NULL, OPTION_NO_FIX_LOONGSON3_LOADS},
   {"mfix-loongson2f-jump", no_argument, NULL, OPTION_FIX_LOONGSON2F_JUMP},
   {"mno-fix-loongson2f-jump", no_argument, NULL, OPTION_NO_FIX_LOONGSON2F_JUMP},
   {"mfix-loongson2f-nop", no_argument, NULL, OPTION_FIX_LOONGSON2F_NOP},
@@ -1923,6 +1931,9 @@ struct insn_label_list
 
 static struct insn_label_list *free_insn_labels;
 #define label_list tc_segment_info_data.labels
+
+#define branch_distance tc_segment_info_data.branch_distance
+#define consecutive_loads tc_segment_info_data.consecutive_loads
 
 static void mips_clear_insn_labels (void);
 static void mips_mark_labels (void);
@@ -6701,6 +6712,63 @@ nops_for_24k (int ignore, const struct mips_cl_insn *hist,
   return 1;
 }
 
+static int
+nops_for_loongson3_loads (int ignore, const struct mips_cl_insn *insn)
+{
+  segment_info_type *si;
+
+  /* If the instructions after the previous one are unknown, we have
+     to assume the ok.  */
+  if (!insn)
+    return 0;
+
+  si = seg_info (now_seg);
+
+  if (delayed_branch_p (insn))
+    {
+      si->branch_distance = insn->noreorder_p ? 1 : 2;
+    }
+  else
+    {
+      if (si->branch_distance > 0)
+        si->branch_distance ++;
+    }
+
+#define INSN_ALL_LOADS (INSN_LOAD_COPROC | INSN_COPROC_MEMORY_DELAY	\
+			| INSN_LOAD_MEMORY | INSN_COPROC_MOVE)
+
+  /* If current instruction wasn't a load or was a safe load, there's nothing
+   * to worry about.  */
+  if ((insn->insn_mo->pinfo & INSN_ALL_LOADS) == 0
+      || (insn->insn_mo->pinfo2 & INSN2_LOAD_MEMORY_SAFE) != 0)
+    {
+      si->consecutive_loads = 0;
+      return 0;
+    }
+
+#undef INSN_ALL_LOADS
+
+  si->consecutive_loads ++;
+
+  /* Check whether we are dealing with four consecutive mem loads.  */
+  if (si->consecutive_loads == 4)
+    {
+      if (si->branch_distance == 5)
+        {
+          si->consecutive_loads = 3;
+          return 0;
+	}
+      else
+        {
+          si->consecutive_loads = 1;
+          return (ignore >= 2) ? 0 : 1;
+	}
+    }
+
+  return 0;
+}
+
+
 /* Return the number of nops that would be needed if instruction INSN
    immediately followed the MAX_NOPS instructions given by HIST,
    where HIST[0] is the most recent instruction.  Ignore hazards
@@ -6733,6 +6801,13 @@ nops_for_insn (int ignore, const struct mips_cl_insn *hist,
   if (mips_fix_24k && !mips_opts.micromips)
     {
       tmp_nops = nops_for_24k (ignore, hist, insn);
+      if (tmp_nops > nops)
+	nops = tmp_nops;
+    }
+
+  if (mips_fix_loongson3_loads && !mips_opts.micromips)
+    {
+      tmp_nops = nops_for_loongson3_loads (ignore, insn);
       if (tmp_nops > nops)
 	nops = tmp_nops;
     }
@@ -7412,7 +7487,7 @@ append_insn (struct mips_cl_insn *ip, expressionS *address_expr,
 	}
     }
 
-  if (mips_relax.sequence != 2 && !mips_opts.noreorder)
+  if (mips_relax.sequence != 2)
     {
       /* There are a lot of optimizations we could do that we don't.
 	 In particular, we do not, in general, reorder instructions.
@@ -14688,6 +14763,14 @@ md_parse_option (int c, const char *arg)
 
     case OPTION_NO_FIX_LOONGSON3_LLSC:
       mips_fix_loongson3_llsc = FALSE;
+      break;
+
+    case OPTION_FIX_LOONGSON3_LOADS:
+      mips_fix_loongson3_loads = 1;
+      break;
+
+    case OPTION_NO_FIX_LOONGSON3_LOADS:
+      mips_fix_loongson3_loads = 0;
       break;
 
     case OPTION_FIX_LOONGSON2F_JUMP:
