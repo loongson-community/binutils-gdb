@@ -1107,6 +1107,9 @@ struct mips_opcode
 /* Instruction has a forbidden slot.  */
 #define INSN2_FORBIDDEN_SLOT        0x00008000
 
+/* Instruction loads value from memory safely.   */
+#define INSN2_LOAD_MEMORY_SAFE      0x00020000
+
 /* Masks used to mark instructions to indicate which MIPS ISA level
    they were introduced in.  INSN_ISA_MASK masks an enumeration that
    specifies the base ISA level(s).  The remainder of a 32-bit
