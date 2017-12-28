@@ -14,5 +14,5 @@
   <reg name="hi3" bitsize="64" regnum="76"/>
   <reg name="lo3" bitsize="64" regnum="77"/>
 
-  <reg name="dspctl" bitsize="32" regnum="78"/>
+  <reg name="dspctl" bitsize="64" regnum="78"/>
 </feature>
