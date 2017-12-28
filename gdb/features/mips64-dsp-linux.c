@@ -99,7 +99,7 @@ initialize_tdesc_mips64_dsp_linux (void)
   tdesc_create_reg (feature, "lo2", 75, 1, NULL, 64, "int");
   tdesc_create_reg (feature, "hi3", 76, 1, NULL, 64, "int");
   tdesc_create_reg (feature, "lo3", 77, 1, NULL, 64, "int");
-  tdesc_create_reg (feature, "dspctl", 78, 1, NULL, 32, "int");
+  tdesc_create_reg (feature, "dspctl", 78, 1, NULL, 64, "int");
 
   feature = tdesc_create_feature (result, "org.gnu.gdb.mips.linux");
   tdesc_create_reg (feature, "restart", 79, 1, "system", 64, "int");
