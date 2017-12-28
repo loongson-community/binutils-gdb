@@ -3460,6 +3460,16 @@ restart:
 	  /* Irix 6.2 N32 ABI uses sd instructions for saving $gp and $ra.  */
 	  set_reg_offset (gdbarch, this_cache, reg, sp + offset);
 	}
+      else if (((inst & 0xFFE08020) == 0xeba00020)	/* gssq reg,reg,offset($sp) */
+               && regsize_is_64_bits)
+	{
+	  reg = (inst >> 16) & 0x1F;
+	  offset = ((((inst >> 6) & 0x1FF) ^ 0x100) - 0x100) << 4;
+	  set_reg_offset (gdbarch, this_cache, reg, sp + offset);
+	  reg = inst & 0x1F;
+	  offset = (((((inst >> 6) & 0x1FF) ^ 0x100) - 0x100) << 4) + 8;
+	  set_reg_offset (gdbarch, this_cache, reg, sp + offset);
+	}
       else if (high_word == 0x27be)	/* addiu $30,$sp,size */
 	{
 	  /* Old gcc frame, r30 is virtual frame pointer.  */
