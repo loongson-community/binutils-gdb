@@ -3583,7 +3583,7 @@ restart:
 
       /* A jump or branch, or enough non-prologue insns seen?  If so,
          then we must have reached the end of the prologue by now.  */
-      if (prev_delay_slot || non_prologue_insns > 1)
+      if (prev_delay_slot || non_prologue_insns > 25)
 	break;
 
       prev_non_prologue_insn = this_non_prologue_insn;
