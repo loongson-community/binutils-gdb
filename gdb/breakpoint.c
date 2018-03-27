@@ -5309,7 +5309,7 @@ bpstat_check_watchpoint (bpstat bs)
 	   this watchpoint.  */
 	must_check_value = 1;
       else if (b->watchpoint_triggered == watch_triggered_unknown
-	       && b->base.type == bp_hardware_watchpoint)
+	       && is_hardware_watchpoint (bs->breakpoint_at))
 	/* We were stopped by a hardware watchpoint, but the target could
 	   not report the data address.  We must check the watchpoint's
 	   value.  Access and read watchpoints are out of luck; without

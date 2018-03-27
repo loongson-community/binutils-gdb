@@ -1,3 +1,8 @@
+2018-03-27  Heiher  <r@hev.cc>
+
+	* breakpoint.c (bpstat_check_watchpoint):
+	Fix read and access watchpoint can't stop.
+
 2017-09-07  Joel Brobecker  <brobecker@adacore.com>
 
 	* version.in: Set GDB version number to 8.0.1.
