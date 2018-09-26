@@ -939,15 +939,17 @@ static int mips_fix_rm7000;
 /* ...likewise -mfix-cn63xxp1 */
 static bfd_boolean mips_fix_cn63xxp1;
 
-/* ...likewise -mfix-loongson3-llsc
- * Default is add sync before ll/lld
- * So make the default value as one.
+/* For -mfix-loongson3-llsc
+ * add sync before ll/lld
+ * ugly workaroud to prevent apply on all the arch
  */
-static bfd_boolean mips_fix_loongson3_llsc = TRUE;
+static bfd_boolean mips_force_enable_fix_loongson3_llsc = FALSE;
+static bfd_boolean mips_force_disable_fix_loongson3_llsc = FALSE;
+
 
 /* ...likewise -mfix-loongson3-loads
  */
-static bfd_boolean mips_fix_loongson3_loads = TRUE;
+static bfd_boolean mips_fix_loongson3_loads;
 
 /* We don't relax branches by default, since this causes us to expand
    `la .l2 - .l1' if there's a branch between .l1 and .l2, because we
@@ -4208,7 +4210,12 @@ md_assemble (char *str)
       goto out;
     }
 
-  if (mips_fix_loongson3_llsc)
+#define ARCH_NEED_LOONGSON3_LLSC_FIX (mips_opts.arch == CPU_GS464	\
+				      || mips_opts.arch == CPU_GS464E	\
+				      || mips_opts.arch == CPU_GS264E	\
+				     )
+
+  if ((ARCH_NEED_LOONGSON3_LLSC_FIX || mips_force_enable_fix_loongson3_llsc) && !mips_force_disable_fix_loongson3_llsc)
     {
       static expressionS bak_imm_expr;
       static expressionS bak_offset_expr;
@@ -14814,11 +14821,11 @@ md_parse_option (int c, const char *arg)
       break;
 
     case OPTION_FIX_LOONGSON3_LLSC:
-      mips_fix_loongson3_llsc = TRUE;
+      mips_force_enable_fix_loongson3_llsc = TRUE;
       break;
 
     case OPTION_NO_FIX_LOONGSON3_LLSC:
-      mips_fix_loongson3_llsc = FALSE;
+      mips_force_disable_fix_loongson3_llsc = TRUE;
       break;
 
     case OPTION_FIX_LOONGSON3_LOADS:
