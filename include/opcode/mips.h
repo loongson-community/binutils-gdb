@@ -928,7 +928,7 @@ mips_opcode_32bit_p (const struct mips_opcode *mo)
    "+S" Length-minus-one field of cins/exts.  Requires msb position
 	of the field to be <= 63.
 
-   Loongson-3A:
+   Loongson-ext ASE:
    "+a" 8-bit signed offset in bit 6 (OP_*_OFFSET_A)
    "+b" 8-bit signed offset in bit 3 (OP_*_OFFSET_B)
    "+c" 9-bit signed offset in bit 6 (OP_*_OFFSET_C)
@@ -1259,8 +1259,6 @@ static const unsigned int mips_isa_table[] = {
 #define INSN_LOONGSON_2E          0x40000000
 /* ST Microelectronics Loongson 2F.  */
 #define INSN_LOONGSON_2F          0x80000000
-/* Loongson 3A.  */
-#define INSN_LOONGSON_3A          0x00000400
 /* RMI Xlr instruction */
 #define INSN_XLR                 0x00000020
 /* Imagination interAptiv MR2.  */
@@ -1305,6 +1303,14 @@ static const unsigned int mips_isa_table[] = {
 #define ASE_CRC64		0x00080000
 /* Global INValidate Extension.  */
 #define ASE_GINV		0x00100000
+/* Loongson MultiMedia extensions Instructions (MMI).  */
+#define ASE_LOONGSON_MMI       0x00200000
+/* Loongson Content Address Memory (CAM).  */
+#define ASE_LOONGSON_CAM       0x00400000
+/* Loongson EXTensions (EXT) instructions.  */
+#define ASE_LOONGSON_EXT       0x00800000
+/* Loongson EXTensions R2 (EXT2) instructions.  */
+#define ASE_LOONGSON_EXT2      0x01000000
 
 /* MIPS ISA defines, use instead of hardcoding ISA level.  */
 
@@ -1369,7 +1375,9 @@ static const unsigned int mips_isa_table[] = {
 #define CPU_SB1         12310201        /* octal 'SB', 01.  */
 #define CPU_LOONGSON_2E 3001
 #define CPU_LOONGSON_2F 3002
-#define CPU_LOONGSON_3A 3003
+#define CPU_GS464	3003
+#define CPU_GS464E	3004
+#define CPU_GS264E	3005
 #define CPU_OCTEON	6501
 #define CPU_OCTEONP	6601
 #define CPU_OCTEON2	6502
@@ -1427,9 +1435,6 @@ cpu_is_member (int cpu, unsigned int mask)
 
     case CPU_LOONGSON_2F:
       return (mask & INSN_LOONGSON_2F) != 0;
-
-    case CPU_LOONGSON_3A:
-      return (mask & INSN_LOONGSON_3A) != 0;
 
     case CPU_OCTEON:
       return (mask & INSN_OCTEON) != 0;

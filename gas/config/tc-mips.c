@@ -422,7 +422,9 @@ static int mips_32bitmode = 0;
     || (ISA) == ISA_MIPS64R5		\
     || (ISA) == ISA_MIPS64R6		\
     || (CPU) == CPU_R5900)		\
-   && (CPU) != CPU_LOONGSON_3A)
+   && ((CPU) != CPU_GS464		\
+    || (CPU) != CPU_GS464E		\
+    || (CPU) != CPU_GS264E))
 
 /* Return true if ISA supports move to/from high part of a 64-bit
    floating-point register. */
@@ -1543,6 +1545,14 @@ enum options
     OPTION_NO_ODD_SPREG,
     OPTION_GINV,
     OPTION_NO_GINV,
+    OPTION_LOONGSON_MMI,
+    OPTION_NO_LOONGSON_MMI,
+    OPTION_LOONGSON_CAM,
+    OPTION_NO_LOONGSON_CAM,
+    OPTION_LOONGSON_EXT,
+    OPTION_NO_LOONGSON_EXT,
+    OPTION_LOONGSON_EXT2,
+    OPTION_NO_LOONGSON_EXT2,
     OPTION_END_OF_ENUM
   };
 
@@ -1603,6 +1613,14 @@ struct option md_longopts[] =
   {"mno-crc", no_argument, NULL, OPTION_NO_CRC},
   {"mginv", no_argument, NULL, OPTION_GINV},
   {"mno-ginv", no_argument, NULL, OPTION_NO_GINV},
+  {"mloongson-mmi", no_argument, NULL, OPTION_LOONGSON_MMI},
+  {"mno-loongson-mmi", no_argument, NULL, OPTION_NO_LOONGSON_MMI},
+  {"mloongson-cam", no_argument, NULL, OPTION_LOONGSON_CAM},
+  {"mno-loongson-cam", no_argument, NULL, OPTION_NO_LOONGSON_CAM},
+  {"mloongson-ext", no_argument, NULL, OPTION_LOONGSON_EXT},
+  {"mno-loongson-ext", no_argument, NULL, OPTION_NO_LOONGSON_EXT},
+  {"mloongson-ext2", no_argument, NULL, OPTION_LOONGSON_EXT2},
+  {"mno-loongson-ext2", no_argument, NULL, OPTION_NO_LOONGSON_EXT2},
 
   /* Old-style architecture options.  Don't add more of these.  */
   {"m4650", no_argument, NULL, OPTION_M4650},
@@ -1804,6 +1822,26 @@ static const struct mips_ase mips_ases[] = {
     OPTION_GINV, OPTION_NO_GINV,
     6,  6, 6, 6,
     -1 },
+
+  { "loongson-mmi", ASE_LOONGSON_MMI, 0,
+    OPTION_LOONGSON_MMI, OPTION_NO_LOONGSON_MMI,
+    0, 0, -1, -1,
+    -1 },
+
+  { "loongson-cam", ASE_LOONGSON_CAM, 0,
+    OPTION_LOONGSON_CAM, OPTION_NO_LOONGSON_CAM,
+    0, 0, -1, -1,
+    -1 },
+
+  { "loongson-ext", ASE_LOONGSON_EXT, 0,
+    OPTION_LOONGSON_EXT, OPTION_NO_LOONGSON_EXT,
+    0, 0, -1, -1,
+    -1 },
+
+  { "loongson-ext2", ASE_LOONGSON_EXT | ASE_LOONGSON_EXT2, 0,
+    OPTION_LOONGSON_EXT2, OPTION_NO_LOONGSON_EXT2,
+    0, 0, -1, -1,
+    -1 },
 };
 
 /* The set of ASEs that require -mfp64.  */
@@ -1811,7 +1849,8 @@ static const struct mips_ase mips_ases[] = {
 
 /* Groups of ASE_* flags that represent different revisions of an ASE.  */
 static const unsigned int mips_ase_groups[] = {
-  ASE_DSP | ASE_DSPR2 | ASE_DSPR3
+  ASE_DSP | ASE_DSPR2 | ASE_DSPR3, 
+  ASE_LOONGSON_EXT | ASE_LOONGSON_EXT2 
 };
 
 /* Pseudo-op table.
@@ -19135,6 +19174,14 @@ mips_convert_ase_flags (int ase)
     ext_ases |= AFL_ASE_CRC;
   if (ase & ASE_GINV)
     ext_ases |= AFL_ASE_GINV;
+  if (ase & ASE_LOONGSON_MMI)
+    ext_ases |= AFL_ASE_LOONGSON_MMI;
+  if (ase & ASE_LOONGSON_CAM)
+    ext_ases |= AFL_ASE_LOONGSON_CAM;
+  if (ase & ASE_LOONGSON_EXT)
+    ext_ases |= AFL_ASE_LOONGSON_EXT;
+  if (ase & ASE_LOONGSON_EXT2)
+    ext_ases |= AFL_ASE_LOONGSON_EXT2;
 
   return ext_ases;
 }
@@ -19781,7 +19828,7 @@ static const struct mips_cpu_info mips_cpu_info_table[] =
   { "r5900",          0, 0,			ISA_MIPS3,    CPU_R5900 },
   /* ST Microelectronics Loongson 2E and 2F cores */
   { "loongson2e",     0, 0,			ISA_MIPS3,    CPU_LOONGSON_2E },
-  { "loongson2f",     0, 0,			ISA_MIPS3,    CPU_LOONGSON_2F },
+  { "loongson2f",     0, ASE_LOONGSON_MMI,	ISA_MIPS3,    CPU_LOONGSON_2F },
 
   /* MIPS IV */
   { "r8000",          0, 0,			ISA_MIPS4,    CPU_R8000 },
@@ -19880,9 +19927,17 @@ static const struct mips_cpu_info mips_cpu_info_table[] =
   /* Broadcom SB-1A CPU core */
   { "sb1a",           0, ASE_MIPS3D | ASE_MDMX,	ISA_MIPS64,   CPU_SB1 },
 
-  { "loongson3a",     0, 0,			ISA_MIPS64R2, CPU_LOONGSON_3A },
-
   /* MIPS 64 Release 2 */
+  /* Loongson CPU core */
+  /* -march=loongson3a is an alias of -march=gs464 for compatibility */
+  { "loongson3a",     0, ASE_LOONGSON_MMI | ASE_LOONGSON_CAM | ASE_LOONGSON_EXT,
+     ISA_MIPS64R2,	CPU_GS464 },
+  { "gs464",          0, ASE_LOONGSON_MMI | ASE_LOONGSON_CAM | ASE_LOONGSON_EXT,
+     ISA_MIPS64R2,	CPU_GS464 },
+  { "gs464e",         0, ASE_LOONGSON_MMI | ASE_LOONGSON_CAM | ASE_LOONGSON_EXT
+     | ASE_LOONGSON_EXT2,	ISA_MIPS64R2,	CPU_GS464E },
+  { "gs264e",         0, ASE_LOONGSON_MMI | ASE_LOONGSON_CAM | ASE_LOONGSON_EXT
+     | ASE_LOONGSON_EXT2 | ASE_MSA | ASE_MSA64,	ISA_MIPS64R2,	CPU_GS264E },
 
   /* Cavium Networks Octeon CPU core */
   { "octeon",	      0, 0,			ISA_MIPS64R2, CPU_OCTEON },
@@ -20154,6 +20209,18 @@ MIPS options:\n\
   fprintf (stream, _("\
 -mginv			generate Global INValidate (GINV) instructions\n\
 -mno-ginv		do not generate Global INValidate instructions\n"));
+  fprintf (stream, _("\
+-mloongson-mmi		generate Loongson MultiMedia extensions Instructions (MMI) instructions\n\
+-mno-loongson-mmi	do not generate Loongson MultiMedia extensions Instructions\n"));
+  fprintf (stream, _("\
+-mloongson-cam		generate Loongson Content Address Memory (CAM) instructions\n\
+-mno-loongson-cam	do not generate Loongson Content Address Memory Instructions\n"));
+  fprintf (stream, _("\
+-mloongson-ext		generate Loongson EXTensions (EXT) instructions\n\
+-mno-loongson-ext	do not generate Loongson EXTensions Instructions\n"));
+  fprintf (stream, _("\
+-mloongson-ext2		generate Loongson EXTensions R2 (EXT2) instructions\n\
+-mno-loongson-ext2	do not generate Loongson EXTensions R2 Instructions\n"));
   fprintf (stream, _("\
 -minsn32		only generate 32-bit microMIPS instructions\n\
 -mno-insn32		generate all microMIPS instructions\n"));
