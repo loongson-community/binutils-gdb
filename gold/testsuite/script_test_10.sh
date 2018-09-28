@@ -36,11 +36,11 @@ check()
 }
 
 check script_test_10.stdout ".*\[ 1\] .text"
-check script_test_10.stdout ".*\[ 2\] .sec0"
-check script_test_10.stdout ".*\[ 3\] .sec1"
-check script_test_10.stdout ".*\[ 4\] .sec2"
-check script_test_10.stdout ".*\[ 5\] .secz"
-check script_test_10.stdout ".*\[ 6\] .sec3"
-check script_test_10.stdout ".*\[ 7\] .data"
+check script_test_10.stdout ".* .sec0"
+check script_test_10.stdout ".* .sec1"
+check script_test_10.stdout ".* .sec2"
+check script_test_10.stdout ".* .secz"
+check script_test_10.stdout ".* .sec3"
+check script_test_10.stdout ".* .data"
 check script_test_10.stdout ".* .bss"
 
