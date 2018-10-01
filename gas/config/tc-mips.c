@@ -4205,10 +4205,8 @@ md_assemble (char *str)
     }
 
   if (insn_error.msg)
-    {
       report_insn_error (str);
-      goto out;
-    }
+  else {
 
 #define ARCH_NEED_LOONGSON3_LLSC_FIX (mips_opts.arch == CPU_GS464	\
 				      || mips_opts.arch == CPU_GS464E	\
@@ -4262,8 +4260,7 @@ md_assemble (char *str)
       else
 	append_insn (&insn, NULL, unused_reloc, FALSE);
     }
-
-out:
+    }
   mips_assembling_insn = FALSE;
 }
 
@@ -7550,7 +7547,15 @@ append_insn (struct mips_cl_insn *ip, expressionS *address_expr,
 	}
     }
 
-  if (mips_relax.sequence != 2)
+  bfd_boolean need_nop_insn = FALSE;
+  if (mips_fix_loongson3_loads) {
+    if (mips_relax.sequence != 2)
+      need_nop_insn = TRUE;
+  } else if (mips_relax.sequence != 2 && !mips_opts.noreorder) {
+      need_nop_insn = TRUE;
+  }
+
+  if (need_nop_insn == TRUE)
     {
       /* There are a lot of optimizations we could do that we don't.
 	 In particular, we do not, in general, reorder instructions.
