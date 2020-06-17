@@ -202,6 +202,8 @@ mips_linux_watch_type_to_irw (enum target_hw_bp_type type)
 {
   switch (type)
     {
+    case hw_execute:
+      return I_MASK;
     case hw_write:
       return W_MASK;
     case hw_read:

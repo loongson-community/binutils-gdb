@@ -1,3 +1,12 @@
+2020-06-17  Heiher  <r@hev.cc>
+
+	* mips-linux-nat.c (mips_linux_nat_target::can_use_hw_breakpoint):
+	Handle case.
+	(mips_linux_nat_target::stopped_by_watchpoint): Update.
+	(mips_linux_nat_target::insert_hw_breakpoint): New methods.
+	(mips_linux_nat_target::remove_hw_breakpoint): New methods.
+	* nat/mips-linux-watch.c (mips_linux_watch_type_to_irw): Handle case.
+
 2020-05-23  Joel Brobecker  <brobecker@adacore.com>
 
 	* version.in: Set GDB version number to 9.2.

@@ -52,6 +52,8 @@ public:
   void close () override;
 
   int can_use_hw_breakpoint (enum bptype, int, int) override;
+  int insert_hw_breakpoint (struct gdbarch *, struct bp_target_info *) override;
+  int remove_hw_breakpoint (struct gdbarch *, struct bp_target_info *) override;
 
   int remove_watchpoint (CORE_ADDR, int, enum target_hw_bp_type,
 			 struct expression *) override;
@@ -546,6 +548,9 @@ mips_linux_nat_target::can_use_hw_breakpoint (enum bptype type,
 
    switch (type)
     {
+    case bp_hardware_breakpoint:
+      wanted_mask = I_MASK;
+      break;
     case bp_hardware_watchpoint:
       wanted_mask = W_MASK;
       break;
@@ -588,7 +593,7 @@ mips_linux_nat_target::stopped_by_watchpoint ()
   num_valid = mips_linux_watch_get_num_valid (&watch_readback);
 
   for (n = 0; n < MAX_DEBUG_REGISTER && n < num_valid; n++)
-    if (mips_linux_watch_get_watchhi (&watch_readback, n) & (R_MASK | W_MASK))
+    if (mips_linux_watch_get_watchhi (&watch_readback, n) & IRW_MASK)
       return true;
 
   return false;
@@ -757,6 +762,126 @@ mips_linux_nat_target::remove_watchpoint (CORE_ADDR addr, int len,
 
   if (show_debug_regs)
     mips_show_dr ("remove_watchpoint", addr, len, type);
+
+  return retval;
+}
+
+/* Insert a hardware-assisted breakpoint at BP_TGT->reqstd_address.
+   Return 0 on success, -1 on failure.  */
+
+int
+mips_linux_nat_target::insert_hw_breakpoint (struct gdbarch *gdbarch,
+						struct bp_target_info *bp_tgt)
+{
+  struct pt_watch_regs regs;
+  struct mips_watchpoint *new_watch;
+  struct mips_watchpoint **pw;
+
+  const enum target_hw_bp_type type = hw_execute;
+  CORE_ADDR addr = bp_tgt->placed_address = bp_tgt->reqstd_address;
+  int retval;
+  int len;
+
+  gdbarch_breakpoint_from_pc (gdbarch, &addr, &len);
+
+  if (show_debug_regs)
+    fprintf_unfiltered
+      (gdb_stdlog,
+       "insert_hw_breakpoint on entry (addr=0x%08lx, len=%d))\n",
+       (unsigned long) addr, len);
+
+  if (!mips_linux_read_watch_registers (inferior_ptid.lwp (),
+					&watch_readback,
+					&watch_readback_valid, 0))
+    return -1;
+
+  if (len <= 0)
+    return -1;
+
+  regs = watch_readback;
+  /* Add the current watches.  */
+  mips_linux_watch_populate_regs (current_watches, &regs);
+
+  /* Now try to add the new watch.  */
+  if (!mips_linux_watch_try_one_watch (&regs, addr, len,
+				       mips_linux_watch_type_to_irw (type)))
+    return -1;
+
+  /* It fit.  Stick it on the end of the list.  */
+  new_watch = XNEW (struct mips_watchpoint);
+  new_watch->addr = addr;
+  new_watch->len = len;
+  new_watch->type = type;
+  new_watch->next = NULL;
+
+  pw = &current_watches;
+  while (*pw != NULL)
+    pw = &(*pw)->next;
+  *pw = new_watch;
+
+  watch_mirror = regs;
+  retval = write_watchpoint_regs ();
+
+  if (show_debug_regs)
+    mips_show_dr ("insert_hw_breakpoint", addr, len, type);
+
+  return retval;
+}
+
+/* Remove a hardware-assisted breakpoint at BP_TGT->placed_address.
+   Return 0 on success, -1 on failure.  */
+
+int
+mips_linux_nat_target::remove_hw_breakpoint (struct gdbarch *gdbarch,
+						struct bp_target_info *bp_tgt)
+{
+  int retval;
+  int deleted_one;
+  int len = 4;
+
+  struct mips_watchpoint **pw;
+  struct mips_watchpoint *w;
+
+  const enum target_hw_bp_type type = hw_execute;
+  CORE_ADDR addr = bp_tgt->placed_address;
+
+  gdbarch_breakpoint_from_pc (gdbarch, &addr, &len);
+
+  if (show_debug_regs)
+    fprintf_unfiltered
+      (gdb_stdlog, "remove_hw_breakpoint on entry (addr=0x%08lx, len=%d))\n",
+       (unsigned long) addr, len);
+
+  /* Search for a known watch that matches.  Then unlink and free
+     it.  */
+  deleted_one = 0;
+  pw = &current_watches;
+  while ((w = *pw))
+    {
+      if (w->addr == addr && w->len == len && w->type == type)
+	{
+	  *pw = w->next;
+	  xfree (w);
+	  deleted_one = 1;
+	  break;
+	}
+      pw = &(w->next);
+    }
+
+  if (!deleted_one)
+    return -1;  /* We don't know about it, fail doing nothing.  */
+
+  /* At this point watch_readback is known to be valid because we
+     could not have added the watch without reading it.  */
+  gdb_assert (watch_readback_valid == 1);
+
+  watch_mirror = watch_readback;
+  mips_linux_watch_populate_regs (current_watches, &watch_mirror);
+
+  retval = write_watchpoint_regs ();
+
+  if (show_debug_regs)
+    mips_show_dr ("remove_hw_watchpoint", addr, len, type);
 
   return retval;
 }
