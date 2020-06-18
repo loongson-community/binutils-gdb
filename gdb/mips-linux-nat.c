@@ -582,21 +582,9 @@ mips_linux_nat_target::can_use_hw_breakpoint (enum bptype type,
 bool
 mips_linux_nat_target::stopped_by_watchpoint ()
 {
-  int n;
-  int num_valid;
+  CORE_ADDR addr;
 
-  if (!mips_linux_read_watch_registers (inferior_ptid.lwp (),
-					&watch_readback,
-					&watch_readback_valid, 1))
-    return false;
-
-  num_valid = mips_linux_watch_get_num_valid (&watch_readback);
-
-  for (n = 0; n < MAX_DEBUG_REGISTER && n < num_valid; n++)
-    if (mips_linux_watch_get_watchhi (&watch_readback, n) & IRW_MASK)
-      return true;
-
-  return false;
+  return stopped_data_address (&addr);
 }
 
 /* Target to_stopped_data_address implementation.  Set the address
@@ -606,8 +594,34 @@ mips_linux_nat_target::stopped_by_watchpoint ()
 bool
 mips_linux_nat_target::stopped_data_address (CORE_ADDR *paddr)
 {
-  /* On mips we don't know the low order 3 bits of the data address,
-     so we must return false.  */
+  siginfo_t siginfo;
+  int num_valid;
+  int n;
+
+  if (!linux_nat_get_siginfo (inferior_ptid, &siginfo))
+    return false;
+
+  /* This must be a hardware breakpoint.  */
+  if (siginfo.si_signo != SIGTRAP
+      || (siginfo.si_code & 0xffff) != 0x0004 /* TRAP_HWBKPT */)
+    return false;
+
+  if (!mips_linux_read_watch_registers (inferior_ptid.lwp (),
+					&watch_readback,
+					&watch_readback_valid, 1))
+    return false;
+
+  num_valid = mips_linux_watch_get_num_valid (&watch_readback);
+
+  for (n = 0; n < MAX_DEBUG_REGISTER && n < num_valid; n++)
+    {
+    if (mips_linux_watch_get_watchhi (&watch_readback, n) & IRW_MASK)
+      {
+        *paddr = mips_linux_watch_get_watchlo (&watch_readback, n) >> 3;
+        return true;
+      }
+    }
+
   return false;
 }
 

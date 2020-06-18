@@ -248,7 +248,7 @@ mips_linux_watch_try_one_watch (struct pt_watch_regs *regs,
     return 0;
 
   last_byte = addr + len - 1;
-  mask_bits = fill_mask (addr ^ last_byte) | IRW_MASK;
+  mask_bits = fill_mask (addr ^ last_byte);
   base_addr = addr & ~mask_bits;
 
   /* Check to see if it is covered by current registers.  */
@@ -257,7 +257,8 @@ mips_linux_watch_try_one_watch (struct pt_watch_regs *regs,
       t_low = mips_linux_watch_get_watchlo (regs, i);
       if (t_low != 0 && irw == ((uint32_t) t_low & irw))
 	{
-	  t_hi = mips_linux_watch_get_watchhi (regs, i) | IRW_MASK;
+	  t_hi = mips_linux_watch_get_watchhi (regs, i) >> 3;
+	  t_low >>= 3;
 	  t_low &= ~(CORE_ADDR) t_hi;
 	  if (addr >= t_low && last_byte <= (t_low + t_hi))
 	    return 1;
@@ -271,11 +272,11 @@ mips_linux_watch_try_one_watch (struct pt_watch_regs *regs,
       if (t_low == 0
 	  && irw == (mips_linux_watch_get_irw_mask (regs, i) & irw))
 	{
-	  if (mask_bits <= (get_reg_mask (regs, i) | IRW_MASK))
+	  if (mask_bits <= (get_reg_mask (regs, i) >> 3))
 	    {
 	      /* It fits, we'll take it.  */
-	      mips_linux_watch_set_watchlo (regs, i, base_addr | irw);
-	      mips_linux_watch_set_watchhi (regs, i, mask_bits & ~IRW_MASK);
+	      mips_linux_watch_set_watchlo (regs, i, (base_addr << 3) | irw);
+	      mips_linux_watch_set_watchhi (regs, i, mask_bits << 3);
 	      return 1;
 	    }
 	  else
@@ -295,6 +296,7 @@ mips_linux_watch_try_one_watch (struct pt_watch_regs *regs,
 	  t_hi = get_reg_mask (&regs_copy, i) | IRW_MASK;
 	  if (t_low == 0 && irw == (t_hi & irw))
 	    {
+	      t_hi >>= 3;
 	      t_low = addr & ~(CORE_ADDR) t_hi;
 	      break_addr = t_low + t_hi + 1;
 	      if (break_addr >= addr + len)
@@ -303,9 +305,8 @@ mips_linux_watch_try_one_watch (struct pt_watch_regs *regs,
 		segment_len = break_addr - addr;
 	      mask_bits = fill_mask (addr ^ (addr + segment_len - 1));
 	      mips_linux_watch_set_watchlo (&regs_copy, i,
-					    (addr & ~mask_bits) | irw);
-	      mips_linux_watch_set_watchhi (&regs_copy, i,
-					    mask_bits & ~IRW_MASK);
+					    ((addr & ~mask_bits) << 3) | irw);
+	      mips_linux_watch_set_watchhi (&regs_copy, i, mask_bits << 3);
 	      if (break_addr >= addr + len)
 		{
 		  *regs = regs_copy;
